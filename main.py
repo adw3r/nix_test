@@ -1,16 +1,46 @@
-# This is a sample Python script.
+from concurrent.futures import ThreadPoolExecutor
+import bs4
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import httpx
 
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from src import parser, schemas
 
 
-# Press the green button in the gutter to run the script.
+def extract_links(html: str) -> list[dict]:  # test
+    soup = bs4.BeautifulSoup(html, 'lxml')
+    rows = soup.find_all('div', {'class': 'search-title'})
+    repo_hrefs = [
+        {'url': 'https://github.com%s' % i.find('a')['href']} for i in rows
+    ]
+    return repo_hrefs
+
+
+def main(input_data: dict):
+    input_data = schemas.InputDataWithProxyCheck(**input_data)
+    session = httpx.Client(proxies=input_data.proxies[0])
+    response: httpx.Response = parser.parse_searching_page(session, input_data)
+
+    repo_hrefs = extract_links(response.text)
+    if input_data.type == 'repositories':
+        with ThreadPoolExecutor() as pool:
+            results = pool.map(parser.check_extras, [repo['url'] for repo in repo_hrefs])
+            return results
+    else:
+        return repo_hrefs
+
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    input_data = {
+        "keywords": [  # check is not implemented
+            "openstack",
+            "nova",
+            "css"
+        ],
+        "proxies": [  # check implemented
+            'eu3030339:hKjxGgrgkt@194.61.9.17:7952',
+            'eu3030339:hKjxGgrgkt@46.8.202.81:7952',
+        ],
+        "type": "Repositories"  # checking implemented
+    }
+    repo_hrefs = main(input_data)
+    print(repo_hrefs)
