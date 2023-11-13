@@ -31,19 +31,19 @@ class GitParser:
     def __init__(self, session: httpx.Client):
         self.session = session
 
-    def get_searching_page(self, query: str, searching_type: str) -> httpx.Response:  # test
+    def get_searching_page(self, query: str, searching_type: str) -> httpx.Response:
         params = {
             'q': query, 'type': searching_type
         }
         response = self.session.get('https://github.com/search', params=params, headers=REQUEST_HEADERS)
         return response
 
-    def check_extras(self, url: str) -> httpx.Response:  # test
+    def check_extras(self, url: str) -> httpx.Response:
         response = self.session.get(url, headers=REQUEST_HEADERS)
         return response
 
 
-def simple_format_urls(urls: typing.Sequence) -> typing.Sequence[dict]:  # test
+def simple_format_urls(urls: typing.Sequence) -> typing.Sequence[dict]:
     return [
         {'url': url} for url in urls
     ]
@@ -62,7 +62,7 @@ def get_extras(parser, urls):  # test
     return res
 
 
-def format_with_extras(results: list[httpx.Response]) -> list[dict]:  # test
+def format_with_extras(results: list[httpx.Response]) -> list[dict]:
     data = []
 
     for response in results:
@@ -89,7 +89,7 @@ def format_with_extras(results: list[httpx.Response]) -> list[dict]:  # test
     return data
 
 
-def retrieve_info(input_data: dict):  # test
+def retrieve_info(input_data: dict):
     input_data = schemas.InputDataWithProxyCheck(**input_data)
     parser = GitParser(httpx.Client(proxies=input_data.proxies[0]))
     query = ' '.join(input_data.keywords)
