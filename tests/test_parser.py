@@ -4,8 +4,7 @@ import pytest
 from src import schemas, parser
 
 
-@pytest.fixture
-def input_data():
+def test_parse_searching_page():
     input_data = {
         "keywords": [
             "openstack",
@@ -19,18 +18,18 @@ def input_data():
         "type": "Repositories"
     }
     input_data = schemas.InputDataWithProxyCheck(**input_data)
-    return input_data
+    gh_client = parser.GitParser(httpx.Client(proxies=input_data.proxies[0]))
 
-
-def test_parse_searching_page(input_data):
-    client = httpx.Client(proxies=input_data.proxies[0])
-    response: httpx.Response = parser.parse_searching_page(client, input_data)
-    assert response is not None
+    query = ' '.join(input_data.keywords)
+    request_type = input_data.type
+    searching_page_response: httpx.Response = gh_client.get_searching_page(query, request_type)
+    print(searching_page_response)
+    assert searching_page_response is not None
 
 
 def test_check_extras(input_data):
-    url = 'https://github.com/atuldjadhav/DropBox-Cloud-Storage'
-    client = httpx.Client(proxies=input_data.proxies[0])
+    gh_parser = parser.GitParser(httpx.Client(proxies=input_data.proxies[0]))
 
-    response: httpx.Response = parser.check_extras(client, url)
+    url = 'https://github.com/atuldjadhav/DropBox-Cloud-Storage'
+    response: httpx.Response = gh_parser.check_extras(url)
     assert response is not None
