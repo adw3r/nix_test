@@ -43,31 +43,33 @@ class GitParser:
         return response
 
 
+def extract_urls(html: str) -> list[str]:
+    soup = bs4.BeautifulSoup(html, 'lxml')
+    rows = soup.find_all('div', {'class': 'search-title'})
+    return [f'https://github.com{i.find("a")["href"]}' for i in rows]
+
+
 def simple_format_urls(urls: typing.Sequence) -> typing.Sequence[dict]:
     return [
         {'url': url} for url in urls
     ]
 
 
-def extract_urls(html: str) -> list[str]:  # test
-    soup = bs4.BeautifulSoup(html, 'lxml')
-    rows = soup.find_all('div', {'class': 'search-title'})
-    return [f'https://github.com{i.find("a")["href"]}' for i in rows]
-
-
-def get_extras(parser, urls):  # test
+def get_extras(parser, urls) -> list[httpx.Response]:
     with ThreadPoolExecutor() as pool:
         results = pool.map(parser.check_extras, [url for url in urls])
     res = list(results)
     return res
 
 
-def format_with_extras(results: list[httpx.Response]) -> list[dict]:
+def extract_owner(url):
+    return url.removeprefix('https://github.com/').split('/')[0]
+
+
+def extras_format_urls(results: list[httpx.Response]) -> list[dict]:
     data = []
 
     for response in results:
-        url = str(response.url)
-        repo_owner = url.removeprefix('https://github.com/').split('/')[0]
         language_stats = {}
         soup = bs4.BeautifulSoup(response.text, 'lxml')
         side_bar = soup.find('div', {'class': 'Layout-sidebar'})
@@ -76,10 +78,11 @@ def format_with_extras(results: list[httpx.Response]) -> list[dict]:
         for span_list in spans_list:
             language_stats[span_list[0].text] = float(span_list[1].text[:-1])
 
+        repo_url = str(response.url)
         result = {
-            'url': url,
+            'url': repo_url,
             "extra": {
-                "owner": repo_owner,
+                "owner": extract_owner(repo_url),
                 "language_stats": language_stats
             }
         }
@@ -92,13 +95,14 @@ def format_with_extras(results: list[httpx.Response]) -> list[dict]:
 def retrieve_info(input_data: dict):
     input_data = schemas.InputDataWithProxyCheck(**input_data)
     parser = GitParser(httpx.Client(proxies=input_data.proxies[0]))
-    query = ' '.join(input_data.keywords)
-    request_type = input_data.type
-    searching_page_response: httpx.Response = parser.get_searching_page(query, request_type)
+
+    searching_page_response: httpx.Response = parser.get_searching_page(
+        input_data.type, ' '.join(input_data.keywords)
+    )
     urls = extract_urls(searching_page_response.text)
     if input_data.type == 'repositories':
-        results = get_extras(parser, urls)
+        results: list[httpx.Response] = get_extras(parser, urls)
         if not results:
             raise Exception(results)
-        return format_with_extras(results=results)
+        return extras_format_urls(results=results)
     return simple_format_urls(urls)

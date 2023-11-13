@@ -1,3 +1,4 @@
+import argparse
 import json
 from argparse import ArgumentParser
 from pathlib import Path
@@ -9,7 +10,7 @@ def get_data(file_path: str | Path) -> dict:  # test
     return input_data
 
 
-def create_args():  # test
+def create_args() -> argparse.Namespace:  # test
     argument_parser = ArgumentParser()
     argument_parser.add_argument('--file', '-f')
     args = argument_parser.parse_args()
