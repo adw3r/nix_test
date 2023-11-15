@@ -1,3 +1,4 @@
+import random
 import typing
 from concurrent.futures import ThreadPoolExecutor
 
@@ -56,8 +57,8 @@ def simple_format_urls(urls: typing.Sequence) -> typing.Sequence[dict]:
 
 
 def get_extras(parser, urls) -> list[httpx.Response]:
-    with ThreadPoolExecutor() as pool:
-        results = pool.map(parser.check_extras, [url for url in urls])
+    with ThreadPoolExecutor(max_workers=len(urls)) as pool:
+        results = pool.map(parser.check_extras, urls)
     res = list(results)
     return res
 
@@ -94,7 +95,7 @@ def extras_format_urls(results: list[httpx.Response]) -> list[dict]:
 
 def retrieve_info(input_data: dict):
     input_data = schemas.InputDataWithProxyCheck(**input_data)
-    parser = GitParser(httpx.Client(proxies=input_data.proxies[0]))
+    parser = GitParser(httpx.Client(proxies=random.choice(input_data.proxies)))
 
     searching_page_response: httpx.Response = parser.get_searching_page(
         input_data.type, ' '.join(input_data.keywords)
